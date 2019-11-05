@@ -1,0 +1,181 @@
+Starting the Cassandra Services:
+
+1. Checking if the cassandra service is up and running
+	$ sudo service cassandra status
+2. Stop the service
+	$ sudo service cassandra stop
+3. Remove the existing data directory
+	$ sudo rm -rf /var/lib/cassandra/data/system/*
+4. Start the Cassandra service
+	$ sudo service cassandra start 
+
+NOTE: For a multi-node setup, this has to be done on each node
+
+==================================================
+Connecting to cassandra:
+
+1. setup the host to connect to by setting the following variable
+	$ export CQLSH_HOST=localhost
+	$ export CQLSH_PORT=9160
+
+2. start the cli using:
+	$ cqlsh
+
+NOTE: --> AFter running this, I was getting the following ERROR:
+hdu@storm1:~$ cqlsh
+Connection error: ('Unable to connect to any servers', {'localhost': TypeError('ref() does not take keyword arguments',)})
+
+Need to install cassandra-driver so as cqlsh to run fine:
+	$ sudo apt install python-pip
+	$ pip install cassandra-driver
+	$ export CQLSH_NO_BUNDLED=true
+	$ cqlsh
+
+hdu@storm1:~$ cqlsh
+Connected to Simplilearn Cluster at localhost:9042.
+[cqlsh 5.0.1 | Cassandra 3.6 | CQL spec 3.4.2 | Native protocol v4]
+Use HELP for help.
+
+(REF: --> https://stackoverflow.com/questions/38616858/cqlsh-connection-error-ref-does-not-take-keyword-arguments)
+
+3. getting help of commands
+	cqlsh> help
+
+4. Exit the cqlsh
+	cqlsh> exit
+==================================================
+
+Creating Keyspace:
+
+	SIMPLE STRATEGY REPLICATION (TEST/DEV)
+	cqlsh> create KEYSPACE testDB with replication = {'class': 'SimpleStrategy', 'replication_factor': 3};
+	
+	NETWORK TOPOLOGY STRATEGY (PROD/MULTI RACK DATA CENTRES)
+	cqlsh> CREATE KEYSPACE TestDB1 WITH replication = {'class': 'NetworkTopologyStrategy','datacentre1':3 ,'datacentre2':1};
+
+	cqlsh> use testdb ;
+
+	cqlsh:testdb> create KEYSPACE
+
+Checking the table definition:
+	cqlsh:testdb> desc table employee;
+
+Creating table:
+	cqlsh:testdb> CREATE TABLE employee(
+	          ... empid int primary key,
+	          ... empfirstname varchar,
+	          ... emplastname varchar,
+	          ... empsalary double);
+
+Using Counter Column:
+	cqlsh:testdb> create TABLE Department (
+          ... deptID int primary key,
+          ... numEmployees counter);
+
+	cqlsh:testdb> UPDATE department set numemployees = numemployees +1 where deptid =1000;
+	cqlsh:testdb> select * from department ;
+
+	 deptid | numemployees
+	--------+--------------
+	   1000 |            1
+
+Creating Indexes:
+	cqlsh:testdb> CREATE INDEX first_index on testdb.employee (empfirstname) ;
+	cqlsh:testdb> select * from testdb.employee WHERE empFirstname="Jack";
+
+Collection Columns (set,list,map):
+	set : unordered group of values
+		{'XYZ','ABC','PQR'}
+	list : ordered group of values
+		['2011','2012','2013'] 
+	map : {'k':'v'}
+
+	cqlsh:testdb> DROP TABLE employee ;
+	cqlsh:testdb> CREATE TABLE employee (empid int primary key, roles set<text>);
+	cqlsh:testdb> update employee SET roles = roles+{'Supervisor'} where empid=1000;
+	cqlsh:testdb> select * from employee ;
+
+	 empid | roles
+	-------+----------------
+	  1000 | {'Supervisor'}
+
+Altering table to add the collection column:
+	cqlsh:testdb> create TABLE stocks (ticker text, year int, value double, primary key(ticker,year));
+	cqlsh:testdb> alter table stocks add supportNumber set<text>;
+	cqlsh:testdb> select * from stocks;
+
+	 ticker | year | supportnumber | value
+	--------+------+---------------+-------
+	
+	cqlsh:testdb> UPDATE stocks set supportnumber ={'1800800800'} where ticker ='ABC' and year =2011;
+	cqlsh:testdb> UPDATE stocks set supportnumber =supportnumber + {'1800800801'} where ticker ='ABC' and year =2011;
+	cqlsh:testdb> select * from stocks ;
+
+	 ticker | year | supportnumber                | value
+	--------+------+------------------------------+-------
+	    ABC | 2011 | {'1800800800', '1800800801'} |  null
+
+===========================================================
+DML Statements:
+===========================================================
+Inserting a rec (if not exists): Inserts only if the pkey is not present
+	cqlsh:testdb> insert into employee (empid, empfirstname , emplastname ) values (100,'Jack','frank') if not exist;
+
+UPDATE: updates the value if the where clause is satisfied and inserts if not found (UPSERT in MongoDB)
+	cqlsh:testdb> update employee set empid=101 where empfirstname='John'
+	NOTE : We can not update the p-key column.
+	NOTE : If we try to update the column where p-key is not present, it will get inserted.
+	NOTE : We can increment/decrement only the counter columns.
+
+COPY Command : Inserting bulk data in DB : CLI commands not Shell
+	COPY employee (empid, empfirstname, emplastname) from employeeData.csv
+	COPY employee from employeeData.bar WITH HEADER=TRUE AND DELIMITER='|';
+
+SELECT Statements:
+	Where condition only on PKey or Index Columns
+	Range condition is allow
+ed only in the last part of the Primary key.
+	Values must be defined for all the leading columns in PK
+
+DELETE Statements:
+	If the columns are specified in the DELETE statements, only the column values are removed, but the entire row is not deleted.
+	cqlsh:testdb> DELETE from employee where empid=1000;
+	cqlsh:testdb> DELETE empFirstName from employee where empid=200;
+	cqlsh:testdb> DELETE from emplouee where empid=2000 (if salary > 10000)
+
+==================================================
+
+To execute commands from file and exit
+	$ cqlsh --file=<filename>
+
+==================================================
+
+Tunable consistency:
+	There is a tradeoff between consistency and Preformance
+	(More Consistency)-->(Slow Performance), and vice-versa
+
+	Setting CONSISTENCY LEVEL(READ):
+		cqlsh:testdb> CONSISTENCY [ONE|QUORUM|LOCAL_QUORUM|EACH_QUORUM|ALL]
+		cqlsh:testdb> select * from stocks where ticker='ABC'
+
+	Setting CONSISTENCY LEVEL(WRITE):
+		cqlsh:testdb> CONSISTENCY [ANY|ONE|QUORUM|LOCAL_QUORUM|EACH_QUORUM|ALL]
+		cqlsh:testdb> CONSISTENCY ANY;
+		cqlsh:testdb> update stocks set value = 45 WHERE ticker ='XYZ' and year =2013;
+
+Hinted Handoff:
+	In case the actual node goes doen and the data is to be written. The data is written to the Temporary node and if if the CONSISTENCY LEVEL is set to all, it acknowledges the consistency as if it were the actual node. When the actual node comes up, it replicates the data from temp to actual node.
+
+==================================================
+
+Time to live (TTL):--> update the value column to 145 which will become null after 10 seconds.
+	cqlsh:testdb> update stocks
+		USING TTL 10
+		set value=60
+		where ticker='XYZ' and year=2014;
+
+==================================================
+
+Tombstone:--> To handle distributed deletes. Intead of deleting the row itself. A Tombstone is created (as a marker) indicating the row is deleted. And it is later removed during compaction after grace period.
+	cqlsh:testdb> CONSISTENCY ONE ;
+	cqlsh:testdb> DELETE from stocks WHERE ticker ='XYZ' and year =2013;

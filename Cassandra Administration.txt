@@ -1,0 +1,53 @@
+Ways to monitor and Administer the Cassandra Cluster:
+
+	Nodetool Utility (on each node)
+	OpsCentre Utility (GUI based, modify configuration params, add nodes to cluster, stop/start services)
+
+======================================================
+
+hdu@storm1:~$ nodetool status;
+Datacenter: datacenter1
+=======================
+Status=Up/Down
+|/ State=Normal/Leaving/Joining/Moving
+--  Address    Load       Tokens       Owns    Host ID                               Rack
+UN  127.0.0.1  190.75 KiB  256          ?       4c56e3e0-6c6d-4b7a-ba92-2140cbac9080  rack1
+
+Note: Non-system keyspaces don't have the same replication settings, effective ownership information is meaningless
+
+hdu@storm1:~$ nodetool help;
+
+======================================================
+
+INSTALL AND CONFIGURE OpsCentre:
+	hdu@storm1:~$ sudo apt-get install opscenter
+	hdu@storm1:~$ sudo apt-get install datastax-agent
+	hdu@storm1:~$ echo "stomp_interface:localhost" | sudo tee -a /var/lib/datastax-agent/conf/address.yaml
+
+	hdu@storm1:~$ sudo service opscenterd start
+	hdu@storm1:~$ sudo service opscenterd status
+
+	hdu@storm1:~$ sudo service datastax-agent start
+	hdu@storm1:~$ sudo service datastax-agent status
+
+======================================================
+MONITIRING WITH OpsCenter:
+
+
+
+echo "deb https://debian.datastax.com/enterprise stable main" | sudo tee -a /etc/apt/sources.list.d/datastax.sources.list
+curl -L https://debian.datastax.com/debian/repo_key | sudo apt-key add -
+
+
+
+
+
+
+
+
+
+
+
+
+
+

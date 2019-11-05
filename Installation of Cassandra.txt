@@ -1,0 +1,197 @@
+Installation Steps in Brief:
+=================================================
+1. Select OS
+2. Select Machine
+3. Prepare for installation
+4. Setup repository
+5. Install Cassandra
+6. Check Installation
+7. Configure Cassandra
+8. Configure single-node cluster
+9. Configure multinode cluster
+10. Setup property file
+11. Configure Production cluster
+12. Setup gossiping property file
+13. Start Cassandra services
+14. Connect to cassandra
+
+=================================================
+
+1.
+Choose any linux OS 16.04
+
+=================================================
+
+2.
+Machine Selection
+
+For DEV
+	min 2GB RAM
+	2 CPUc for Cassandra
+	1 TB HD
+For PROD:
+	16GB RAM to 96GB RAM per machine
+	At least 8-Core CPUs
+	2GHz and above processors
+	4x2TB HD
+
+=================================================
+3.
+Prerequisites:
+	Java JRE 1.7 or above
+	Python, for some cassandra tools
+	Extra packages for Enterprise Linux (EPEL), for some systems
+=================================================
+4.
+Configure Repository -- Data stax packaged installation of Cassandra.
+	1. Add the DataStax repository to sources list
+		$ echo "deb http://debian.DataStax.com/community stable main" | sudo tee -a /etc/apt/sources.list.d/cassandra.sources.list
+		$ ls /etc/apt/sources.list.d/
+cassandra.sources.list
+
+	2. Add the DatStax repository key to trusted keys using:
+		$ curl -L http://debian.DataStax.com/debian/repo_key | sudo apt-key add -
+		This command gets the repo key from DataStax and adds it to aptitude keys of Ubuntu
+
+Install "curl" using the following steps:
+	$ sudo apt-get update
+	$ sudo apt-get install curl
+	$ curl --version
+		curl 7.29.0 (x86_64-redhat-linux-gnu) libcurl/7.29.0 NSS/3.15.4 zlib/1.2.7 libidn/1.28 libssh2/1.4.3
+		Protocols: dict file ftp ftps gopher http https imap imaps ldap ldaps pop3 pop3s rtsp scp sftp smtp smtps telnet tftp
+		Features: AsynchDNS GSS-Negotiate IDN IPv6 Largefile NTLM NTLM_WB SSL libz
+
+=================================================
+(REF---->>>> https://www.liquidweb.com/kb/install-cassandra-ubuntu-16-04-lts/ )
+=================================================
+5.
+Install Cassandra:
+	Update Repo
+	$ sudo apt-get update
+	Install cassandra package (Version 2.1.1-stable version on Ubuntu. Once Cassandra is installed on system, its services start automatically.)
+	$ sudo apt-get install cassandra
+
+	Verify the installation of Cassandra by running (if this gives some error saying "Connection Refused" run the command again, following is the expected result):
+	$ nodetool status
+	Datacenter: datacenter1
+	=======================
+	Status=Up/Down
+	|/ State=Normal/Leaving/Joining/Moving
+	--  Address    Load       Tokens       Owns (effective)  Host ID                               Rack
+	UN  127.0.0.1  112.09 KiB  256          100.0%            4c56e3e0-6c6d-4b7a-ba92-2140cbac9080  rack1
+
+=================================================
+6.
+Check the Installation:
+
+Check in the configuration directory of cassandra in either /etc/cassandra OR /etc/cassandra/conf 
+
+Check if the following files are present in below path:
+cassandra-env.sh
+cassandra-topology.properties
+cassandra.yaml
+	$ ls /etc/cassandra
+
+=================================================
+7.
+Configuring Cassandra
+cassandra-env.sh :--> Linux shell script to set environment props like heap size and JVM params
+cassandra.yaml :--> main config file to customize Cassandra cluster. (Cluste name, # virtual nodes, data file location, seed providers, listen address and RPC ports)
+cassandra-topology.properties :--> cluster topology specs file containing the list of nodes and their topology, such as datacentre and rack configuration
+
+=================================================
+8.
+Configuration for single node cluster
+	modify only the "cluster_name" in "cassandra.yaml" file in "/etc/cassandra" rest of the properties are default.
+
+	$ cd /etc/cassandra
+	$ vi cassandra.yaml
+		cluster_name: "Simplilearn Cluster"
+		num_tokens: 256
+		data_file_directories:
+		    - /var/lib/cassandra/data
+		
+		seed_provider:
+		    # Addresses of hosts that are deemed contact points. 
+		    # Cassandra nodes use this list of hosts to find each other and learn
+		    # the topology of the ring.  You must change this if you are running
+		    # multiple nodes!
+		    - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+		      parameters:
+		          # seeds is actually a comma-delimited list of addresses.
+		          # Ex: "<ip1>,<ip2>,<ip3>"
+		          - seeds: "127.0.0.1"
+
+		listen_address: localhost
+		native_transport_port: 9042
+		endpoint_snitch: SimpleSnitch
+
+=================================================
+9.
+Configuration for multinode, multi-DC cluster
+	modify the "cassandra.yaml" file to change the below properties
+	
+	$ cd /etc/cassandra
+	$ vi cassandra.yaml
+		cluster_name: "Simplilearn Cluster"
+		num_tokens: 256
+		data_file_directories:
+		    - /var/lib/cassandra/data
+		
+		seed_provider: #LIST OF SEED NODES TO USE FOR GOSSIP BOOTSTRAP
+		    - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+		      parameters:
+		          # seeds is actually a comma-delimited list of addresses.
+		          # Ex: "<ip1>,<ip2>,<ip3>"
+		          - seeds: "node1,node2,node3"
+
+		listen_address: node1 #Address of this node
+		native_transport_port: 9042
+		endpoint_snitch: PropertyFileSnitch #Points to property file
+
+=================================================
+10.
+Add the cluster topology in the cassandra-topology.properties file for the cluster, while the PropertyFileSnitch is used as the Snitch.
+NOTE: This file is used only when the "endpoint_snitch: PropertyFileSnitc" is used
+
+# Cassandra Node IP=Data Center:Rack
+192.168.1.100=DC1:RAC1
+192.168.2.200=DC2:RAC2
+
+10.0.0.10=DC1:RAC1
+10.0.0.11=DC1:RAC1
+10.0.0.12=DC1:RAC2
+
+10.20.114.10=DC2:RAC1
+10.20.114.11=DC2:RAC1
+
+10.21.119.13=DC3:RAC1
+10.21.119.10=DC3:RAC1
+
+10.0.0.13=DC1:RAC2
+10.21.119.14=DC3:RAC2
+10.20.114.15=DC2:RAC2
+
+# default for unknown nodes
+default=DC1:r1
+
+=================================================
+11.
+Configuration for Production Cluster
+
+Specify the node addresses, cluster topology through the casandra-rackdc.properties file and snitch as "GossipingPropertyFileSnitch"
+
+the "cassandra.yaml" file will be same as for multi-node cluster only difference will be 
+"endpoint_snitch: GossipingPropertyFileSnitch"
+
+=================================================
+12.
+Add the cluster topology in the cassandra-rackdc.properties file for the cluster, while the PropertyFileSnitch is used as the Snitch.
+NOTE: This file is used only when the "endpoint_snitch: GossipingPropertyFileSnitc" is used.
+
+Add these properties in other nodes as well
+
+# These properties are used with GossipingPropertyFileSnitch and will
+# indicate the rack and dc for this node
+dc=dc1
+rack=rack1

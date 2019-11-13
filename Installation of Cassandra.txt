@@ -106,7 +106,7 @@ Configuration for single node cluster
 
 	$ cd /etc/cassandra
 	$ vi cassandra.yaml
-		cluster_name: "Simplilearn Cluster"
+		cluster_name: "Practice Cluster"
 		num_tokens: 256
 		data_file_directories:
 		    - /var/lib/cassandra/data
@@ -133,7 +133,7 @@ Configuration for multinode, multi-DC cluster
 	
 	$ cd /etc/cassandra
 	$ vi cassandra.yaml
-		cluster_name: "Simplilearn Cluster"
+		cluster_name: "Practice Cluster"
 		num_tokens: 256
 		data_file_directories:
 		    - /var/lib/cassandra/data
